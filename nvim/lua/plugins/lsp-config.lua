@@ -12,16 +12,16 @@ return {
         config = function()
             require("mason-lspconfig").setup({
                 ensure_installed = {
-                    "clangd", -- C/C++
-                    "cmake", -- CMake
-                    "cssls", -- CSS
+                    "clangd",   -- C/C++
+                    "cmake",    -- CMake
+                    "cssls",    -- CSS
                     "dockerls", -- Dockerfile
-                    "eslint", -- ESLint LSP
-                    "gopls", -- Go
-                    "html", -- HTML
-                    "lua_ls", -- Lua
-                    "pyright", -- Python
-                    "ts_ls", -- TypeScript/JavaScript
+                    "eslint",   -- ESLint LSP
+                    "gopls",    -- Go
+                    "html",     -- HTML
+                    "lua_ls",   -- Lua
+                    "pyright",  -- Python
+                    -- "ts_ls", -- TypeScript/JavaScript
                 },
             })
         end,
@@ -81,24 +81,30 @@ return {
                 require("cmp_nvim_lsp").default_capabilities()
             )
 
-            -- Automatically set up all installed servers using Mason's handlers
             mason_lspconfig.setup_handlers({
+                -- Special handler for gopls to disable its formatting
+                ["gopls"] = function()
+                    lspconfig.gopls.setup({
+                        on_attach = function(client, bufnr)
+                            -- Disable gopls formatting so that null-ls can handle it
+                            client.server_capabilities.documentFormattingProvider = false
+                            on_attach(client, bufnr)
+                        end,
+                        capabilities = capabilities,
+                        settings = {
+                            gopls = {
+                                gofumpt = true,
+                            },
+                        },
+                    })
+                end,
+                -- Default handler for all other servers
                 function(server_name)
                     lspconfig[server_name].setup({
                         on_attach = on_attach,
                         capabilities = capabilities,
                     })
                 end,
-                -- You can override settings for specific servers here:
-                -- ["lua_ls"] = function()
-                --   lspconfig.lua_ls.setup({
-                --     on_attach = on_attach,
-                --     capabilities = capabilities,
-                --     settings = {
-                --       Lua = { diagnostics = { globals = { "vim" } } },
-                --     },
-                --   })
-                -- end,
             })
         end,
     },
@@ -111,7 +117,7 @@ return {
             require("go").setup()
         end,
         event = { "CmdlineEnter" },
-        ft = { "go", 'gomod' },
+        ft = { "go", "gomod" },
         build = ':lua require("go.install").update_all_sync()' -- if you need to install/update all binaries
     },
     {
@@ -121,12 +127,14 @@ return {
             local null_ls = require("null-ls")
             return {
                 sources = {
-                    -- Use Prettier for JS, TS, CSS, HTML, Markdown, etc.
+                    -- Use Prettier for web-related filetypes
                     null_ls.builtins.formatting.prettier.with({
                         filetypes = { "javascript", "typescript", "css", "html", "json", "markdown" },
                     }),
-                    -- You can also add other formatters like Black for Python, etc.
+                    -- Use Black for Python
                     null_ls.builtins.formatting.black,
+                    -- Use gofumpt for Go formatting (this will prettify your Go code)
+                    null_ls.builtins.formatting.gofumpt,
                 },
                 on_attach = function(client, bufnr)
                     if client.server_capabilities.documentFormattingProvider then
@@ -141,5 +149,4 @@ return {
             }
         end,
     },
-
 }
